@@ -41,8 +41,7 @@ if(length(untruncated_autocorrelation) < 5*Fs)
     warning('PCG signal too short - cannot comput ccSQI');
 else
     
-    
-    t = [0:1:length(untruncated_autocorrelation)-1]; % Time Samples
+    t = 0:1:length(untruncated_autocorrelation)-1; % Time Samples
     sums = [];
     
     % potential range of heart rates (in cycles per second rather than
@@ -52,34 +51,33 @@ else
     for i = 1:length(frequency_range)
         
         f = frequency_range(i);% Heart beat frequency
-        
-        % Find the rectified cosinusoid:
-        oscil = (cos(2*pi*f/Fs*t));
-        oscil = ((oscil)>0).*(oscil);
-       
-        % Find the samples each side of the cosine peaks:
+              
+        % Find the samples each side of the cosine peaks. These peaks are
+        % at multiples of the "f" frequency of the cosine:
         cos_peaks1 = (1:5)'.*Fs/f - round(Fs*0.12);
         cos_peaks2 = (1:5)'.*Fs/f + round(Fs*0.12);
         cos_spread = [];
         for i = 1:5
-            cos_spread = [cos_spread, round(cos_peaks1(i):cos_peaks2(i))];
+            % Find the "spread" of the samples each side of each cosine
+            % peak - cos_peaks1 is 0.12*Fs samples to the left of the peak
+            % cos_peaks2 is 0.12*Fs to the right of each peak, and the
+            % cos_spread finds the samples in between these two points, for
+            % the five cosine peaks. This is unless the spread passes the
+            % length of the signal. In that case, the spread is truncated
+            % to the length.
+            cos_spread = [cos_spread, round(min([cos_peaks1(i) length(untruncated_autocorrelation)]):min([cos_peaks2(i) length(untruncated_autocorrelation)]))];
         end
-        
         % Find the squared sum of the samples of the autocorrelation
         % function within the "cos_spread" each side of the cosine peaks
         sums = [sums sum((untruncated_autocorrelation(cos_spread)).^2)];
-        
     end
     
-   
     % Find the heart frequency which resulted in the maximum sum of the
     % autocorrelation samples within the "cos_spread" of the fitted cosine:
-    [a,b] = max(sums);
+    [~,b] = max(sums);
     f = frequency_range(b);
-    HR = round(f*60);
     oscil = (cos(2*pi*f/Fs*t));
     oscil = ((oscil)>0).*(oscil);
-    
     
     % Limit the correlation to 5 seconds:
     max_cos_peaks = round(5*Fs/f) + round(Fs*0.120);
@@ -87,7 +85,6 @@ else
       
     ccSQI =  correlation_coefficient(2,1);
     
-      
     if(figures)
         figure('Name', 'ccSQI Plot');
         t = (1:length(untruncated_autocorrelation(1:max_cos_peaks)))./Fs;
@@ -95,9 +92,6 @@ else
         hold on;
         plot(t,oscil(1:max_cos_peaks),'r');
     end
-    
-    
-    
 end
 
 
